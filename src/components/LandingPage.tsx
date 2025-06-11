@@ -390,37 +390,6 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
             )}
           </div>
         )}
-
-        {/* Recent Activity */}
-        {memos.length > 0 && searchResults.length === 0 && (
-          <div className="mt-16">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold text-gray-900">Recent Activity</h3>
-              <button
-                onClick={() => onViewChange('grid')}
-                className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors duration-200"
-              >
-                View all →
-              </button>
-            </div>
-            
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {memos.slice(0, 3).map((memo) => (
-                <div
-                  key={memo.id}
-                  className={`${memo.color} p-6 rounded-xl border-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer transform hover:-translate-y-1`}
-                  onClick={() => onViewChange('grid')}
-                >
-                  <h4 className="font-semibold text-gray-800 mb-2 truncate">{memo.title}</h4>
-                  <p className="text-gray-600 text-sm line-clamp-3">{memo.content}</p>
-                  <div className="mt-4 text-xs text-gray-500">
-                    {memo.createdAt.toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <style jsx>{`
