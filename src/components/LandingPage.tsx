@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PenTool, Grid3X3, Sparkles, Zap } from 'lucide-react';
+import { PenTool, Grid3X3, Sparkles, Zap, Clipboard, ClipboardCheck } from 'lucide-react';
 import { useMemos } from '../hooks/useMemos';
 import { ViewMode } from '../types/memo';
 
@@ -10,8 +10,14 @@ interface LandingPageProps {
 export function LandingPage({ onViewChange }: LandingPageProps) {
   const [content, setContent] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
+  const [pasteSuccess, setPasteSuccess] = useState(false);
+  const [pasteError, setPasteError] = useState('');
   const { addMemo, memos } = useMemos();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check if clipboard API is available
+  const isClipboardSupported = typeof navigator !== 'undefined' && 'clipboard' in navigator && 'readText' in navigator.clipboard;
 
   // Auto-focus the textarea when component mounts
   useEffect(() => {
@@ -19,6 +25,22 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
       textareaRef.current.focus();
     }
   }, []);
+
+  // Clear paste error after 3 seconds
+  useEffect(() => {
+    if (pasteError) {
+      const timer = setTimeout(() => setPasteError(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [pasteError]);
+
+  // Clear paste success after 2 seconds
+  useEffect(() => {
+    if (pasteSuccess) {
+      const timer = setTimeout(() => setPasteSuccess(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [pasteSuccess]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +64,49 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
           textareaRef.current.focus();
         }
       }, 600);
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    if (!isClipboardSupported) {
+      setPasteError('Clipboard not supported in this browser');
+      return;
+    }
+
+    setIsPasting(true);
+    setPasteError('');
+
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      
+      if (!clipboardText.trim()) {
+        setPasteError('Clipboard is empty');
+        setIsPasting(false);
+        return;
+      }
+
+      setContent(clipboardText);
+      setPasteSuccess(true);
+      
+      // Focus textarea after pasting
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        // Move cursor to end of text
+        const length = clipboardText.length;
+        textareaRef.current.setSelectionRange(length, length);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          setPasteError('Permission denied to access clipboard');
+        } else {
+          setPasteError('Failed to read from clipboard');
+        }
+      } else {
+        setPasteError('Failed to read from clipboard');
+      }
+    } finally {
+      setIsPasting(false);
     }
   };
 
@@ -126,30 +191,79 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
                 </span>
               </div>
               
-              <button
-                id="create-memo-btn"
-                type="submit"
-                disabled={!content.trim() || isCreating}
-                className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200
-                  ${content.trim() && !isCreating
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }
-                `}
-              >
-                {isCreating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <>
-                    <PenTool className="w-4 h-4" />
-                    <span>Save Memo</span>
-                  </>
+              <div className="flex items-center space-x-3">
+                {/* Paste Error Message */}
+                {pasteError && (
+                  <div className="text-red-600 text-sm font-medium animate-fade-in">
+                    {pasteError}
+                  </div>
                 )}
-              </button>
+
+                {/* Paste from Clipboard Button */}
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  disabled={!isClipboardSupported || isPasting || content.trim().length > 0}
+                  className={`
+                    flex items-center space-x-2 px-4 py-3 rounded-xl font-medium transition-all duration-200
+                    ${isClipboardSupported && !isPasting && content.trim().length === 0
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 hover:border-gray-300'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }
+                    ${pasteSuccess ? 'bg-green-100 text-green-700 border-green-200' : ''}
+                  `}
+                  title={
+                    !isClipboardSupported 
+                      ? 'Clipboard not supported' 
+                      : content.trim().length > 0 
+                        ? 'Clear text to paste from clipboard'
+                        : 'Paste from clipboard'
+                  }
+                >
+                  {isPasting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="hidden sm:inline">Pasting...</span>
+                    </>
+                  ) : pasteSuccess ? (
+                    <>
+                      <ClipboardCheck className="w-4 h-4" />
+                      <span className="hidden sm:inline">Pasted!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clipboard className="w-4 h-4" />
+                      <span className="hidden sm:inline">Paste</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Save Memo Button */}
+                <button
+                  id="create-memo-btn"
+                  type="submit"
+                  disabled={!content.trim() || isCreating}
+                  className={`
+                    flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200
+                    ${content.trim() && !isCreating
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {isCreating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PenTool className="w-4 h-4" />
+                      <span>Save Memo</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -185,6 +299,16 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
