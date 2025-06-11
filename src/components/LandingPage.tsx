@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PenTool, Grid3X3, Sparkles, Zap, Clipboard, ClipboardCheck } from 'lucide-react';
+import { PenTool, Grid3X3, Sparkles, Zap, Clipboard, ClipboardCheck, Share } from 'lucide-react';
 import { useMemos } from '../hooks/useMemos';
 import { ViewMode } from '../types/memo';
 
@@ -13,18 +13,57 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
   const [isPasting, setIsPasting] = useState(false);
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const [pasteError, setPasteError] = useState('');
+  const [sharedContent, setSharedContent] = useState<string | null>(null);
   const { addMemo, memos } = useMemos();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if clipboard API is available
   const isClipboardSupported = typeof navigator !== 'undefined' && 'clipboard' in navigator && 'readText' in navigator.clipboard;
 
-  // Auto-focus the textarea when component mounts
+  // Handle shared content from Web Share Target API
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedTitle = urlParams.get('title');
+    const sharedText = urlParams.get('text');
+    const sharedUrl = urlParams.get('url');
+
+    if (sharedTitle || sharedText || sharedUrl) {
+      let combinedContent = '';
+      
+      if (sharedTitle) {
+        combinedContent += sharedTitle;
+      }
+      
+      if (sharedText) {
+        if (combinedContent) combinedContent += '\n\n';
+        combinedContent += sharedText;
+      }
+      
+      if (sharedUrl) {
+        if (combinedContent) combinedContent += '\n\n';
+        combinedContent += sharedUrl;
+      }
+
+      setContent(combinedContent);
+      setSharedContent(combinedContent);
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
+  // Auto-focus the textarea when component mounts or when shared content is received
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
+      // If there's shared content, move cursor to the end
+      if (sharedContent) {
+        const length = content.length;
+        textareaRef.current.setSelectionRange(length, length);
+      }
     }
-  }, []);
+  }, [sharedContent, content]);
 
   // Clear paste error after 3 seconds
   useEffect(() => {
@@ -51,6 +90,7 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
     
     addMemo(content);
     setContent('');
+    setSharedContent(null);
     setIsCreating(false);
     
     // Show success feedback and refocus
@@ -144,6 +184,21 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Shared Content Indicator */}
+      {sharedContent && (
+        <div className="max-w-4xl mx-auto px-6 mb-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Share className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-indigo-900">Shared Content Received</h3>
+              <p className="text-sm text-indigo-700">Content has been automatically added to your memo below.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-12">
