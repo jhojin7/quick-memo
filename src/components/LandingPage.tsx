@@ -159,13 +159,12 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Header */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-5"></div>
-        <div className="relative px-6 py-8">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+      {/* Navigation Bar */}
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
                 <PenTool className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -183,11 +182,11 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* Shared Content Indicator */}
       {sharedContent && (
-        <div className="max-w-4xl mx-auto px-6 mb-4">
+        <div className="max-w-4xl mx-auto px-6 mb-4 pt-4">
           <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center space-x-3">
             <div className="p-2 bg-indigo-100 rounded-lg">
               <Share className="w-4 h-4 text-indigo-600" />
