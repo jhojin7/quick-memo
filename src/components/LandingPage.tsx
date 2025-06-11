@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PenTool, Grid3X3, Sparkles, Zap, Clipboard, ClipboardCheck, Share } from 'lucide-react';
+import { PenTool, Grid3X3, Sparkles, Zap, Clipboard, ClipboardCheck, Share, Search } from 'lucide-react';
 import { useMemos } from '../hooks/useMemos';
-import { ViewMode } from '../types/memo';
+import { ViewMode, Memo } from '../types/memo';
 
 interface LandingPageProps {
   onViewChange: (mode: ViewMode) => void;
@@ -14,7 +14,8 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const [pasteError, setPasteError] = useState('');
   const [sharedContent, setSharedContent] = useState<string | null>(null);
-  const { addMemo, memos } = useMemos();
+  const [searchResults, setSearchResults] = useState<Memo[]>([]);
+  const { addMemo, memos, searchMemos } = useMemos();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if clipboard API is available
@@ -65,6 +66,21 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
     }
   }, [sharedContent, content]);
 
+  // Fuzzy search effect - search memos as user types
+  useEffect(() => {
+    if (content.trim()) {
+      const results = searchMemos(content.trim());
+      // Only show results if there are matches and the search query is meaningful
+      if (results.length > 0 && content.trim().length > 1) {
+        setSearchResults(results.slice(0, 6)); // Limit to 6 results
+      } else {
+        setSearchResults([]);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  }, [content, searchMemos]);
+
   // Clear paste error after 3 seconds
   useEffect(() => {
     if (pasteError) {
@@ -91,6 +107,7 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
     addMemo(content);
     setContent('');
     setSharedContent(null);
+    setSearchResults([]);
     setIsCreating(false);
     
     // Show success feedback and refocus
@@ -155,6 +172,11 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const handleSearchResultClick = (memo: Memo) => {
+    // Navigate to grid view - the memo will be visible there
+    onViewChange('grid');
   };
 
   return (
@@ -322,8 +344,55 @@ export function LandingPage({ onViewChange }: LandingPageProps) {
           </div>
         </form>
 
+        {/* Search Results */}
+        {searchResults.length > 0 && content.trim() && (
+          <div className="mt-8">
+            <div className="flex items-center space-x-2 mb-6">
+              <Search className="w-5 h-5 text-gray-500" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Found {searchResults.length} matching memo{searchResults.length !== 1 ? 's' : ''}
+              </h3>
+            </div>
+            
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {searchResults.map((memo) => (
+                <div
+                  key={memo.id}
+                  className={`${memo.color} p-6 rounded-xl border-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer transform hover:-translate-y-1 group`}
+                  onClick={() => handleSearchResultClick(memo)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="font-semibold text-gray-800 truncate flex-1">{memo.title}</h4>
+                    <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm line-clamp-3 mb-3">{memo.content}</p>
+                  <div className="text-xs text-gray-500 flex items-center justify-between">
+                    <span>{memo.createdAt.toLocaleDateString()}</span>
+                    <span className="text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      Click to view →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {searchResults.length === 6 && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => onViewChange('grid')}
+                  className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors duration-200"
+                >
+                  View all results in memo grid →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Recent Activity */}
-        {memos.length > 0 && (
+        {memos.length > 0 && searchResults.length === 0 && (
           <div className="mt-16">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-2xl font-bold text-gray-900">Recent Activity</h3>
